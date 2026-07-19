@@ -1,4 +1,4 @@
-name: CI - FastAPI
+name: CI-CD - FastAPI
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   calidad-y-pruebas:
-    name: Revisar código y ejecutar pruebas
+    name: CI - Revisar código y ejecutar pruebas
     runs-on: ubuntu-latest
 
     steps:
@@ -47,3 +47,25 @@ jobs:
           path: reportes/
           if-no-files-found: warn
           retention-days: 14
+
+  desplegar:
+    name: CD - Solicitar despliegue en Render
+    needs: calidad-y-pruebas
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Activar Deploy Hook de Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Falta configurar el secreto RENDER_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            --request POST \
+            "$RENDER_DEPLOY_HOOK_URL"
+
+          echo "Solicitud de despliegue enviada correctamente a Render."
